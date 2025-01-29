@@ -6,23 +6,33 @@
 
 #include <Arduino.h>
 
+#include <JPEGDEC.h>
 #include <PNGdec.h>
 
 #include "buffer.h"
 #include "draw.h"
 #include "epaper.h"
+#include "image.h"
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+enum ImageFormat {
+  PNG_FORMAT,
+  JPEG_FORMAT,
+  BMP_FORMAT,
+};
 
 size_t ble_data_alloc = 256;
 uint8_t *ble_data = (uint8_t *)malloc(ble_data_alloc);
 size_t ble_data_size = 0;
 
 bool began = false;
-bool png_decoder = false;
+bool decoded = false;
+ImageFormat image_format;
 
 PNG png;
+JPEGDEC jpeg;
 
 BLECharacteristic *pCharacteristic;
 
@@ -54,101 +64,120 @@ uint8_t *ble_get_data() { return pCharacteristic->getData(); }
 
 size_t ble_get_len() { return pCharacteristic->getLength(); }
 
-void ble_draw(PNGDRAW *pDraw) {
+void ble_draw_png(PNGDRAW *pDraw) {
 #ifdef DEBUG
   Serial.println("WRITING DRAW DATA");
   Serial.printf("Width: %d, Y: %d\n", pDraw->iWidth, pDraw->y);
 #endif
 
   uint16_t *usPixels = (uint16_t *)malloc(2 * 128);
-
   png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_LITTLE_ENDIAN, 0xffffffff);
 
-  uint16_t in_idx = 0;
-  uint16_t red, green, blue;
-  bool whitish = false;
-  bool colored = false;
-  bool with_color = true;
-  uint8_t out_byte = 0xFF;       // white (for w%8!=0 border)
-  uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
-  uint16_t out_idx_col = 0;
-
-  for (uint16_t col = 0; col < pDraw->iWidth; col++) {
-
-    uint8_t lsb = ((uint8_t *)usPixels)[in_idx++];
-    uint8_t msb = ((uint8_t *)usPixels)[in_idx++];
-    blue = (lsb & 0x1F) << 3;
-    green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
-    red = (msb & 0xF8);
-    whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80))
-                         : ((red + green + blue) > 3 * 0x80); // whitish
-    colored = (red > 0xF0) ||
-              ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-    if (whitish) {
-      // keep white
-    } else if (colored && with_color) {
-      out_color_byte &= ~(0x80 >> col % 8); // colored
-    } else {
-      out_byte &= ~(0x80 >> col % 8); // black
-    }
-    if ((7 == col % 8) ||
-        (col == pDraw->iWidth - 1)) // write that last byte! (for w%8!=0 border)
-    {
-      output_color_buffer[0][out_idx_col] = out_color_byte;
-      output_mono_buffer[0][out_idx_col++] = out_byte;
-      out_byte = 0xFF;       // white (for w%8!=0 border)
-      out_color_byte = 0xFF; // white (for w%8!=0 border)
-    }
-  }
+  rgb565_to_buffer((uint8_t *)usPixels, pDraw->iWidth, 1);
 
   epaper_write(output_mono_buffer[0], output_color_buffer[0], pDraw->iWidth, 1,
                0, pDraw->y);
 }
 
+int ble_draw_jpeg(JPEGDRAW *pDraw) {
+#ifdef DEBUG
+  Serial.println("WRITING DRAW DATA");
+  Serial.printf("Width: %d, Y: %d\n", pDraw->iWidth, pDraw->y);
+#endif
+
+  rgb565_to_buffer((uint8_t *)pDraw->pPixels, pDraw->iWidth, pDraw->iHeight);
+
+  for (uint16_t i = 0; i < pDraw->iHeight; i++) {
+    epaper_write(output_mono_buffer[i], output_color_buffer[i], pDraw->iWidth,
+                 1, pDraw->x, pDraw->y + i);
+  }
+
+  return 1;
+}
+
 void ble_characteristics_callbacks::onWrite(
     BLECharacteristic *pCharacteristic) {
-  if (pCharacteristic->getLength() < 10) {
-    if (memcmp(pCharacteristic->getValue().c_str(), "BEGIN", strlen("BEGIN")) ==
-        0) {
-      Serial.println("BEGIN");
-      began = true;
-    } else if (memcmp(pCharacteristic->getValue().c_str(), "PNG",
-                      strlen("PNG")) == 0 &&
-               began) {
-      Serial.println("PNG");
-      png_decoder = true;
-    } else if (memcmp(pCharacteristic->getValue().c_str(), "DRAW",
-                      strlen("DRAW")) == 0) {
-      Serial.println("DRAW");
-      epaper_refresh();
-    } else if (memcmp(pCharacteristic->getValue().c_str(), "CLEAR",
-                      strlen("CLEAR")) == 0) {
-      Serial.println("CLEAR");
-      epaper_clear();
-    } else if (memcmp(pCharacteristic->getValue().c_str(), "END",
-                      strlen("END")) == 0) {
-      Serial.println("END");
-      began = false;
-      if (png_decoder) {
-        if (png.openRAM(ble_data, ble_data_size, ble_draw) != PNG_SUCCESS) {
-          Serial.println("[ble_characteristics_callbacks::onWrite] - Error: "
-                         "png.openRAM failed");
-          return;
-        }
-        png.decode(NULL, 0);
-        png.close();
-        ble_data_alloc = 256;
-        free(ble_data);
-        ble_data = (uint8_t *)malloc(ble_data_alloc);
+  if (memcmp(pCharacteristic->getValue().c_str(), "BEGIN", strlen("BEGIN")) ==
+      0) {
+    Serial.println("BEGIN");
+    began = true;
+    decoded = false;
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "PNG",
+                    strlen("PNG")) == 0 &&
+             began) {
+    Serial.println("PNG");
+    image_format = PNG_FORMAT;
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "JPEG",
+                    strlen("JPEG")) == 0 &&
+             began) {
+    Serial.println("JPEG");
+    image_format = JPEG_FORMAT;
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "END",
+                    strlen("END")) == 0 &&
+             began) {
+    Serial.println("END");
+    switch (image_format) {
+    case PNG_FORMAT:
+      if (png.openRAM(ble_data, ble_data_size, ble_draw_png) != PNG_SUCCESS) {
+        Serial.println("[ble_characteristics_callbacks::onWrite] - Error: "
+                       "png.openRAM failed");
+      }
+      if (png.decode(NULL, 0) != PNG_SUCCESS) {
+        Serial.println("[ble_characteristics_callbacks::onWrite] - Error: "
+                       "png.decode failed");
+      }
+      png.close();
 
 #ifdef DEBUG
-        Serial.println("DECODING PNG");
-        Serial.printf("Image specs: (%d x %d), %d bpp, pixel type: %d\n",
-                      png.getWidth(), png.getHeight(), png.getBpp(),
-                      png.getPixelType());
+      Serial.println("DECODING PNG");
+      Serial.printf("Image specs: (%d x %d), %d bpp, pixel type: %d\n",
+                    png.getWidth(), png.getHeight(), png.getBpp(),
+                    png.getPixelType());
 #endif
+      break;
+
+    case JPEG_FORMAT:
+      if (jpeg.openRAM(ble_data, ble_data_size, ble_draw_jpeg) !=
+          JPEG_SUCCESS) {
+        Serial.println("[ble_characteristics_callbacks::onWrite] - Error: "
+                       "jpeg.openRAM failed");
       }
+      jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
+      if (jpeg.decode(0, 0, 0) != JPEG_SUCCESS) {
+        Serial.println("[ble_characteristics_callbacks::onWrite] - Error: "
+                       "jpeg.decode failed");
+      }
+      jpeg.close();
+
+#ifdef DEBUG
+      Serial.println("DECODING JPEG");
+      Serial.printf("Image size: %d x %d, orientation: %d, bpp: %d\n",
+                    jpeg.getWidth(), jpeg.getHeight(), jpeg.getOrientation(),
+                    jpeg.getBpp());
+#endif
+      break;
+
+    default:
+      break;
     }
+
+    decoded = true;
+    began = false;
+
+    ble_data_alloc = 256;
+    ble_data_size = 0;
+    free(ble_data);
+    ble_data = (uint8_t *)malloc(ble_data_alloc);
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "DRAW",
+                    strlen("DRAW")) == 0 &&
+             decoded) {
+    Serial.println("DRAW");
+    epaper_refresh();
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "CLEAR",
+                    strlen("CLEAR")) == 0 &&
+             decoded) {
+    Serial.println("CLEAR");
+    epaper_clear();
   } else {
     if (pCharacteristic->getLength() + ble_data_size > ble_data_alloc) {
       ble_data_alloc = (pCharacteristic->getLength() + ble_data_size) * 2;
