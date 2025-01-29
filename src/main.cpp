@@ -6,8 +6,7 @@
 #include "epaper.h"
 #include "wifi.h"
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   Serial.println();
   Serial.println("init");
@@ -23,6 +22,4 @@ void setup()
   Serial.println("done");
 }
 
-void loop()
-{
-}
+void loop() {}

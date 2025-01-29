@@ -27,20 +27,17 @@ uint8_t mono_palette_buffer[max_palette_pixels / 8];
 uint8_t color_palette_buffer[max_palette_pixels / 8];
 uint8_t rgb_palette_buffer[max_palette_pixels];
 
-void wifi_init()
-{
+void wifi_init() {
   WiFi.mode(WIFI_STA); // switch off AP
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   int ConnectTimeout = 60; // 30 seconds
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
     Serial.print(WiFi.status());
-    if (--ConnectTimeout <= 0)
-    {
+    if (--ConnectTimeout <= 0) {
       Serial.println();
       Serial.println("WiFi connect timeout");
       return;
@@ -59,8 +56,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                              const char *filename, uint16_t port,
                              bool with_color, uint8_t **out_mono,
                              uint8_t **out_color, uint16_t *out_width,
-                             uint16_t *out_height)
-{
+                             uint16_t *out_height) {
   WiFiClient client;
   bool connection_ok = false;
   bool valid = false; // valid format to be handled
@@ -76,8 +72,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
   Serial.println(host);
 #endif
 
-  if (!client.connect(host, port))
-  {
+  if (!client.connect(host, port)) {
     Serial.println("connection failed");
     return;
   }
@@ -91,19 +86,16 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
   Serial.println("request sent");
 #endif
 
-  while (client.connected())
-  {
+  while (client.connected()) {
     String line = client.readStringUntil('\n');
-    if (!connection_ok)
-    {
+    if (!connection_ok) {
       connection_ok = line.startsWith("HTTP/1.1 200 OK");
       if (connection_ok)
         Serial.println(line);
     }
     if (!connection_ok)
       Serial.println(line);
-    if (line == "\r")
-    {
+    if (line == "\r") {
       Serial.println("headers received");
       break;
     }
@@ -145,8 +137,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
       uint32_t rowSize = (width * depth / 8 + 3) & ~3;
       if (depth < 8)
         rowSize = ((width * depth + 8 - depth) / 8 + 3) & ~3;
-      if (height < 0)
-      {
+      if (height < 0) {
         height = -height;
         flip = false;
       }
@@ -164,16 +155,14 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
         bool colored = false;
         if (depth == 1)
           with_color = false;
-        if (depth <= 8)
-        {
+        if (depth <= 8) {
           if (depth < 8)
             bitmask >>= depth;
           bytes_read +=
               skip(client,
                    imageOffset - (4 << depth) -
                        bytes_read); // 54 for regular, diff for colorsimportant
-          for (uint16_t pn = 0; pn < (1 << depth); pn++)
-          {
+          for (uint16_t pn = 0; pn < (1 << depth); pn++) {
             blue = client.read();
             green = client.read();
             red = client.read();
@@ -226,8 +215,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                                  ? sizeof(input_buffer)
                                  : in_remain;
               uint32_t got = read8n(client, input_buffer, get);
-              while ((got < get) && connection_ok)
-              {
+              while ((got < get) && connection_ok) {
                 // Serial.print("got "); Serial.print(got); Serial.print(" < ");
                 // Serial.print(get); Serial.print(" @ ");
                 // Serial.println(bytes_read);
@@ -241,15 +229,13 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
               bytes_read += got;
               in_idx = 0;
             }
-            if (!connection_ok)
-            {
+            if (!connection_ok) {
               Serial.print("Error: got no more after ");
               Serial.print(bytes_read);
               Serial.println(" bytes read!");
               break;
             }
-            switch (depth)
-            {
+            switch (depth) {
             case 32:
               blue = input_buffer[in_idx++];
               green = input_buffer[in_idx++];
@@ -273,8 +259,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                   (red > 0xF0) ||
                   ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
               break;
-            case 16:
-            {
+            case 16: {
               uint8_t lsb = input_buffer[in_idx++];
               uint8_t msb = input_buffer[in_idx++];
               if (format == 0) // 555
@@ -282,8 +267,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                 blue = (lsb & 0x1F) << 3;
                 green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
                 red = (msb & 0x7C) << 1;
-              }
-              else // 565
+              } else // 565
               {
                 blue = (lsb & 0x1F) << 3;
                 green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
@@ -295,15 +279,12 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
               colored =
                   (red > 0xF0) ||
                   ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-            }
-            break;
+            } break;
             case 1:
             case 2:
             case 4:
-            case 8:
-            {
-              if (0 == in_bits)
-              {
+            case 8: {
+              if (0 == in_bits) {
                 in_byte = input_buffer[in_idx++];
                 in_bits = 8;
               }
@@ -312,19 +293,13 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
               colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
               in_byte <<= depth;
               in_bits -= depth;
+            } break;
             }
-            break;
-            }
-            if (whitish)
-            {
+            if (whitish) {
               // keep white
-            }
-            else if (colored && with_color)
-            {
+            } else if (colored && with_color) {
               out_color_byte &= ~(0x80 >> col % 8); // colored
-            }
-            else
-            {
+            } else {
               out_byte &= ~(0x80 >> col % 8); // black
             }
             if ((7 == col % 8) ||
@@ -352,8 +327,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
     }
   }
   client.stop();
-  if (!valid)
-  {
+  if (!valid) {
     Serial.println("bitmap format not handled.");
   }
 }
@@ -362,8 +336,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
                               const char *filename, const char *fingerprint,
                               bool with_color, const char *certificate,
                               uint8_t **out_mono, uint8_t **out_color,
-                              uint16_t *out_width, uint16_t *out_height)
-{
+                              uint16_t *out_width, uint16_t *out_height) {
   // display.init(115200, true, 2, false);
   WiFiClientSecure client;
   bool connection_ok = false;
@@ -383,8 +356,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
   if (certificate)
     client.setCACert(certificate);
 
-  if (!client.connect(host, HTTPS))
-  {
+  if (!client.connect(host, HTTPS)) {
     Serial.println("connection failed");
     return;
   }
@@ -398,19 +370,16 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
   Serial.println("request sent");
 #endif
 
-  while (client.connected())
-  {
+  while (client.connected()) {
     String line = client.readStringUntil('\n');
-    if (!connection_ok)
-    {
+    if (!connection_ok) {
       connection_ok = line.startsWith("HTTP/1.1 200 OK");
       if (connection_ok)
         Serial.println(line);
     }
     if (!connection_ok)
       Serial.println(line);
-    if (line == "\r")
-    {
+    if (line == "\r") {
       Serial.println("headers received");
       break;
     }
@@ -419,8 +388,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
     return;
   // Parse BMP header
   uint16_t signature = 0;
-  for (int16_t i = 0; i < 50; i++)
-  {
+  for (int16_t i = 0; i < 50; i++) {
     if (!client.available())
       delay(100);
     else
@@ -466,8 +434,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
       uint32_t rowSize = (width * depth / 8 + 3) & ~3;
       if (depth < 8)
         rowSize = ((width * depth + 8 - depth) / 8 + 3) & ~3;
-      if (height < 0)
-      {
+      if (height < 0) {
         height = -height;
         flip = false;
       }
@@ -485,8 +452,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
         bool colored = false;
         if (depth == 1)
           with_color = false;
-        if (depth <= 8)
-        {
+        if (depth <= 8) {
           if (depth < 8)
             bitmask >>= depth;
           // bytes_read += skip(client, 54 - bytes_read); //palette is always @
@@ -495,8 +461,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
               skip(client,
                    imageOffset - (4 << depth) -
                        bytes_read); // 54 for regular, diff for colorsimportant
-          for (uint16_t pn = 0; pn < (1 << depth); pn++)
-          {
+          for (uint16_t pn = 0; pn < (1 << depth); pn++) {
             blue = client.read();
             green = client.read();
             red = client.read();
@@ -549,8 +514,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
                                  ? sizeof(input_buffer)
                                  : in_remain;
               uint32_t got = read8n(client, input_buffer, get);
-              while ((got < get) && connection_ok)
-              {
+              while ((got < get) && connection_ok) {
                 // Serial.print("got "); Serial.print(got); Serial.print(" < ");
                 // Serial.print(get); Serial.print(" @ ");
                 // Serial.println(bytes_read); if ((get - got) >
@@ -566,15 +530,13 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
               bytes_read += got;
               in_idx = 0;
             }
-            if (!connection_ok)
-            {
+            if (!connection_ok) {
               Serial.print("Error: got no more after ");
               Serial.print(bytes_read);
               Serial.println(" bytes read!");
               break;
             }
-            switch (depth)
-            {
+            switch (depth) {
             case 32:
               blue = input_buffer[in_idx++];
               green = input_buffer[in_idx++];
@@ -598,8 +560,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
                   (red > 0xF0) ||
                   ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
               break;
-            case 16:
-            {
+            case 16: {
               uint8_t lsb = input_buffer[in_idx++];
               uint8_t msb = input_buffer[in_idx++];
               if (format == 0) // 555
@@ -607,8 +568,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
                 blue = (lsb & 0x1F) << 3;
                 green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
                 red = (msb & 0x7C) << 1;
-              }
-              else // 565
+              } else // 565
               {
                 blue = (lsb & 0x1F) << 3;
                 green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
@@ -620,15 +580,12 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
               colored =
                   (red > 0xF0) ||
                   ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
-            }
-            break;
+            } break;
             case 1:
             case 2:
             case 4:
-            case 8:
-            {
-              if (0 == in_bits)
-              {
+            case 8: {
+              if (0 == in_bits) {
                 in_byte = input_buffer[in_idx++];
                 in_bits = 8;
               }
@@ -637,19 +594,13 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
               colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
               in_byte <<= depth;
               in_bits -= depth;
+            } break;
             }
-            break;
-            }
-            if (whitish)
-            {
+            if (whitish) {
               // keep white
-            }
-            else if (colored && with_color)
-            {
+            } else if (colored && with_color) {
               out_color_byte &= ~(0x80 >> col % 8); // colored
-            }
-            else
-            {
+            } else {
               out_byte &= ~(0x80 >> col % 8); // black
             }
             if ((7 == col % 8) ||
@@ -683,8 +634,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
     }
   }
   client.stop();
-  if (!valid)
-  {
+  if (!valid) {
     Serial.println("bitmap format not handled.");
   }
 }
