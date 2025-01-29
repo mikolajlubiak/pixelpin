@@ -9,6 +9,8 @@
 #include "wifi_helper.h"
 // #include "gxepd/gxepd_select.h"
 
+#include "buffer.h"
+
 const char *ssid = "SSID";
 const char *password = "PASSWORD";
 #define HTTP 80
@@ -20,9 +22,6 @@ static const uint16_t input_buffer_pixels = 800; // may affect performance
 static const uint16_t max_palette_pixels = 256; // for depth <= 8
 
 uint8_t input_buffer[3 * input_buffer_pixels]; // up to depth 24
-
-uint8_t output_mono_buffer[MAX_ROW / 8][MAX_COL / 8];
-uint8_t output_color_buffer[MAX_ROW / 8][MAX_COL / 8];
 
 uint8_t mono_palette_buffer[max_palette_pixels / 8];
 uint8_t color_palette_buffer[max_palette_pixels / 8];
@@ -67,23 +66,31 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
   bool valid = false; // valid format to be handled
   bool flip = true;   // bitmap is stored bottom-to-top
   uint32_t startTime = millis();
+
+#ifdef DEBUG
   Serial.println();
   Serial.print("downloading file \"");
   Serial.print(filename);
   Serial.println("\"");
   Serial.print("connecting to ");
   Serial.println(host);
+#endif
+
   if (!client.connect(host, port))
   {
     Serial.println("connection failed");
     return;
   }
+
+#ifdef DEBUG
   Serial.print("requesting URL: ");
   Serial.println(String("http://") + host + path + filename);
   client.print(String("GET ") + path + filename + " HTTP/1.1\r\n" + "Host: " +
                host + "\r\n" + "User-Agent: GxEPD2_WiFi_Example\r\n" +
                "Connection: close\r\n\r\n");
   Serial.println("request sent");
+#endif
+
   while (client.connected())
   {
     String line = client.readStringUntil('\n');
@@ -120,6 +127,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
     if ((planes == 1) &&
         ((format == 0) || (format == 3))) // uncompressed is handled, 565 also
     {
+#ifdef DEBUG
       Serial.print("File size: ");
       Serial.println(fileSize);
       Serial.print("Image Offset: ");
@@ -132,6 +140,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
       Serial.print(width);
       Serial.print('x');
       Serial.println(abs(height));
+#endif
       // BMP rows are padded (if needed) to 4-byte boundary
       uint32_t rowSize = (width * depth / 8 + 3) & ~3;
       if (depth < 8)
@@ -322,20 +331,24 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                 (col == w - 1)) // write that last byte! (for w%8!=0 border)
             {
               output_color_buffer[out_idx_row][out_idx_col] = out_color_byte;
-              output_mono_buffer[out_idx_row++][out_idx_col++] = out_byte;
+              output_mono_buffer[out_idx_row][out_idx_col++] = out_byte;
               out_byte = 0xFF;       // white (for w%8!=0 border)
               out_color_byte = 0xFF; // white (for w%8!=0 border)
             }
           } // end pixel
+          out_idx_row++;
         } // end line
-        *out_mono = (uint8_t *)output_mono_buffer;
-        *out_color = (uint8_t *)output_color_buffer;
+        *out_mono = (uint8_t *)&output_mono_buffer[0][0];
+        *out_color = (uint8_t *)&output_color_buffer[0][0];
+
+#ifdef DEBUG
         Serial.print("downloaded in ");
         Serial.print(millis() - startTime);
         Serial.println(" ms");
+        Serial.print("bytes read ");
+        Serial.println(bytes_read);
+#endif
       }
-      Serial.print("bytes read ");
-      Serial.println(bytes_read);
     }
   }
   client.stop();
@@ -357,12 +370,16 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
   bool valid = false; // valid format to be handled
   bool flip = true;   // bitmap is stored bottom-to-top
   uint32_t startTime = millis();
+
+#ifdef DEBUG
   Serial.println();
   Serial.print("downloading file \"");
   Serial.print(filename);
   Serial.println("\"");
   Serial.print("connecting to ");
   Serial.println(host);
+#endif
+
   if (certificate)
     client.setCACert(certificate);
 
@@ -372,12 +389,15 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
     return;
   }
 
+#ifdef DEBUG
   Serial.print("requesting URL: ");
   Serial.println(String("https://") + host + path + filename);
   client.print(String("GET ") + path + filename + " HTTP/1.1\r\n" + "Host: " +
                host + "\r\n" + "User-Agent: GxEPD2_WiFi_Example\r\n" +
                "Connection: close\r\n\r\n");
   Serial.println("request sent");
+#endif
+
   while (client.connected())
   {
     String line = client.readStringUntil('\n');
@@ -426,6 +446,8 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
     if ((planes == 1) &&
         ((format == 0) || (format == 3))) // uncompressed is handled, 565 also
     {
+
+#ifdef DEBUG
       Serial.print("File size: ");
       Serial.println(fileSize);
       Serial.print("Image Offset: ");
@@ -438,6 +460,8 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
       Serial.print(width);
       Serial.print('x');
       Serial.println(abs(height));
+#endif
+
       // BMP rows are padded (if needed) to 4-byte boundary
       uint32_t rowSize = (width * depth / 8 + 3) & ~3;
       if (depth < 8)
@@ -639,16 +663,21 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
             }
           } // end pixel
           // int16_t yrow = (flip ? h - row - 1 : row);
-          // display.writeImage(output_mono_buffer[out_idx_row], output_color_buffer[out_idx_row], 0, yrow, w, 1);
+          // display.writeImage(output_mono_buffer[out_idx_row],
+          // output_color_buffer[out_idx_row], 0, yrow, w, 1);
           out_idx_row++;
         } // end line
         *out_mono = (uint8_t *)&output_mono_buffer[0][0];
         *out_color = (uint8_t *)&output_color_buffer[0][0];
+
+#ifdef DEBUG
         Serial.print("downloaded in ");
         Serial.print(millis() - startTime);
         Serial.println(" ms");
         Serial.print("bytes read ");
         Serial.println(bytes_read);
+#endif
+
         // display.refresh();
       }
     }

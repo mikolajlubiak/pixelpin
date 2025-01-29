@@ -34,3 +34,4 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char *host, const char *path,
                                    const char *fingerprint, int16_t x,
                                    int16_t y, bool with_color,
                                    const char *certificate);
+                                   
