@@ -174,8 +174,7 @@ void ble_characteristics_callbacks::onWrite(
     Serial.println("DRAW");
     epaper_refresh();
   } else if (memcmp(pCharacteristic->getValue().c_str(), "CLEAR",
-                    strlen("CLEAR")) == 0 &&
-             decoded) {
+                    strlen("CLEAR")) == 0) {
     Serial.println("CLEAR");
     epaper_clear();
   } else {

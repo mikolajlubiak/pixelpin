@@ -22,10 +22,13 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
       green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
       red = (msb & 0xF8);
 
-      whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80))
-                           : ((red + green + blue) > 3 * 0x80); // whitish
-      colored = (red > 0xF0) ||
-                ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
+      whitish =
+          (red * 0.299f + green * 0.587f + blue * 0.114f) > 0x80; // whitish
+      colored =
+          ((red > 0x80) && (((red > green + 0x40) && (red > blue + 0x40)) ||
+                            (red + 0x10 > green + blue))) ||
+          (green > 0xC8 && red > 0xC8 && blue < 0x40); // reddish or yellowish?
+
       if (whitish) {
         // keep white
       } else if (colored && with_color) {
