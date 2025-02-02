@@ -3,9 +3,16 @@
 #include "buffer.h"
 #include "common.h"
 
+#include <Arduino.h>
+
 void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                       uint16_t x, uint16_t y) {
-  uint16_t out_row_idx = 0;
+#ifdef DEBUG
+  static uint16_t height_times = 0;
+  height_times += height;
+  Serial.printf("H: %u, W: %u\n", height_times, width);
+#endif
+
   for (uint16_t row = 0; row < height; row++) {
     uint16_t in_idx = 0;
     uint16_t red, green, blue;
@@ -39,12 +46,11 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
       if ((7 == col % 8) ||
           (col == width - 1)) // write that last byte! (for w%8!=0 border)
       {
-        output_color_buffer[out_row_idx + y][out_col_idx + x] = out_color_byte;
-        output_mono_buffer[out_row_idx + y][x + out_col_idx++] = out_byte;
+        output_color_buffer[row + y][out_col_idx + x] = out_color_byte;
+        output_mono_buffer[row + y][x + out_col_idx++] = out_byte;
         out_byte = 0xFF;       // white (for w%8!=0 border)
         out_color_byte = 0xFF; // white (for w%8!=0 border)
       }
     }
-    out_row_idx++;
   }
 }
