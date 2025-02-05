@@ -2,27 +2,40 @@
 
 #include "buffer.h"
 #include "common.h"
+#include "epaper.h"
 
 #include <Arduino.h>
 
+size_t data_alloc = 256;
+uint8_t *image_data = (uint8_t *)malloc(data_alloc);
+size_t data_size = 0;
+
+PNG png;
+JPEGDEC jpeg;
+
+ImageFormat image_format;
+
 void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
-                      uint16_t x, uint16_t y) {
+                      uint16_t x, uint16_t y)
+{
 #ifdef DEBUG
   static uint16_t height_times = 0;
   height_times += height;
   Serial.printf("H: %u, W: %u\n", height_times, width);
 #endif
 
-  for (uint16_t row = 0; row < height; row++) {
+  for (uint16_t row = 0; row < height; row++)
+  {
     uint16_t in_idx = 0;
-    uint16_t red, green, blue;
+    uint8_t red, green, blue;
     bool whitish = false;
     bool colored = false;
     bool with_color = true;
     uint8_t out_byte = 0xFF;       // white (for w%8!=0 border)
     uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
     uint16_t out_col_idx = 0;
-    for (uint16_t col = 0; col < width; col++) {
+    for (uint16_t col = 0; col < width; col++)
+    {
       uint8_t lsb = ((uint8_t *)rgb565)[row * width + in_idx++];
       uint8_t msb = ((uint8_t *)rgb565)[row * width + in_idx++];
       blue = (lsb & 0x1F) << 3;
@@ -36,11 +49,16 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                             (red + 0x10 > green + blue))) ||
           (green > 0xC8 && red > 0xC8 && blue < 0x40); // reddish or yellowish?
 
-      if (whitish) {
+      if (whitish)
+      {
         // keep white
-      } else if (colored && with_color) {
+      }
+      else if (colored && with_color)
+      {
         out_color_byte &= ~(0x80 >> col % 8); // colored
-      } else {
+      }
+      else
+      {
         out_byte &= ~(0x80 >> col % 8); // black
       }
       if ((7 == col % 8) ||
@@ -53,4 +71,113 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
       }
     }
   }
+}
+
+void draw_png(PNGDRAW *pDraw) {
+#ifdef DEBUG
+  Serial.println("WRITING DRAW DATA");
+  Serial.printf("Width: %d, Y: %d\n", pDraw->iWidth, pDraw->y);
+#endif
+
+  uint16_t *usPixels = (uint16_t *)malloc(2 * 128);
+  png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_LITTLE_ENDIAN, 0xffffffff);
+
+  rgb565_to_buffer((uint8_t *)usPixels, pDraw->iWidth, 1, 0, 0);
+
+  epaper_write(output_mono_buffer[0], output_color_buffer[0], pDraw->iWidth, 1,
+               0, pDraw->y);
+}
+
+int draw_jpeg(JPEGDRAW *pDraw) {
+#ifdef DEBUG
+  Serial.println("WRITING DRAW DATA");
+  Serial.printf("Width: %d, Y: %d\n", pDraw->iWidth, pDraw->y);
+#endif
+
+  rgb565_to_buffer((uint8_t *)pDraw->pPixels, pDraw->iWidth, pDraw->iHeight, 0,
+                   0);
+
+  for (uint16_t i = 0; i < pDraw->iHeight; i++) {
+    epaper_write(output_mono_buffer[i], output_color_buffer[i], pDraw->iWidth,
+                 1, pDraw->x, pDraw->y + i);
+  }
+
+  return 1;
+}
+
+void decode_image() {
+  switch (image_format) {
+  case PNG_FORMAT:
+    if (png.openRAM(image_data, data_size, draw_png) != PNG_SUCCESS) {
+      Serial.println("[decode_image] - Error: "
+                     "png.openRAM failed");
+    }
+    if (png.decode(NULL, 0) != PNG_SUCCESS) {
+      Serial.println("[decode_image] - Error: "
+                     "png.decode failed");
+    }
+    png.close();
+
+#ifdef DEBUG
+    Serial.println("DECODING PNG");
+    Serial.printf("Image specs: (%d x %d), %d bpp, pixel type: %d\n",
+                  png.getWidth(), png.getHeight(), png.getBpp(),
+                  png.getPixelType());
+#endif
+    break;
+
+  case JPEG_FORMAT:
+    if (jpeg.openRAM(image_data, data_size, draw_jpeg) != JPEG_SUCCESS) {
+      Serial.println("[decode_image] - Error: "
+                     "jpeg.openRAM failed");
+    }
+    jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
+    if (jpeg.decode(0, 0, 0) != JPEG_SUCCESS) {
+      Serial.println("[decode_image] - Error: "
+                     "jpeg.decode failed");
+    }
+    jpeg.close();
+
+#ifdef DEBUG
+    Serial.println("DECODING JPEG");
+    Serial.printf("Image size: %d x %d, orientation: %d, bpp: %d\n",
+                  jpeg.getWidth(), jpeg.getHeight(), jpeg.getOrientation(),
+                  jpeg.getBpp());
+#endif
+    break;
+
+  default:
+    break;
+  }
+
+  free(image_data);
+  data_size = 0;
+  data_alloc = 256;
+  image_data = (uint8_t *)malloc(data_alloc);
+}
+
+void alloc_memory(uint8_t* data, size_t length) {
+  if (length + data_size > data_alloc) {
+    data_alloc = (length + data_size) * 2;
+    image_data = (uint8_t *)realloc(image_data, data_alloc);
+
+#ifdef DEBUG
+    Serial.println("REALLOC");
+    Serial.printf("New alloc: %zu\n", data_alloc);
+#endif
+  }
+
+  memcpy(image_data + data_size, data,
+         length);
+  data_size += length;
+
+#ifdef DEBUG
+  Serial.println("COPYING MEMORY");
+  Serial.printf("Length: %zu\n", length);
+  Serial.printf("Data size: %zu\n", data_size);
+#endif
+}
+
+bool raw_format(ImageFormat format) {
+  return format == MONO_BUFFER || format == COLOR_BUFFER;
 }
