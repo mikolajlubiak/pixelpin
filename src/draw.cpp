@@ -61,3 +61,12 @@ void draw_bitmap(uint8_t *bitmap, uint16_t width, uint16_t height) {
   }
   epaper_refresh();
 }
+
+void draw_write(uint8_t *mono, uint8_t *color, uint16_t width, uint16_t height,
+                uint16_t x, uint16_t y) {
+  epaper_write(mono, color, width, height, x, y);
+}
+
+void draw_clear() { epaper_clear(); }
+
+void draw_refresh() { epaper_refresh(); }

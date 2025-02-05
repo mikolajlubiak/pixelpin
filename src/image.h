@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include <JPEGDEC.h>
 #include <PNGdec.h>
@@ -27,4 +27,4 @@ int draw_jpeg(JPEGDRAW *pDraw);
 
 void decode_image();
 
-void alloc_memory(uint8_t* data, size_t length);
+void alloc_memory(uint8_t *data, size_t length);

@@ -8,11 +8,13 @@
 
 #include "buffer.h"
 #include "draw.h"
-#include "epaper.h"
 #include "image.h"
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+size_t mono_buffer_size = 0;
+size_t color_buffer_size = 0;
 
 BLECharacteristic *pCharacteristic;
 
@@ -71,33 +73,29 @@ void ble_characteristics_callbacks::onWrite(
     if (!raw_format(image_format)) {
       decode_image();
     } else {
+      draw_write((uint8_t *)output_mono_buffer, (uint8_t *)output_color_buffer,
+                 MAX_COL, MAX_ROW, 0, 0);
       mono_buffer_size = 0;
       color_buffer_size = 0;
     }
   } else if (memcmp(pCharacteristic->getValue().c_str(), "DRAW",
                     strlen("DRAW")) == 0) {
     Serial.println("DRAW");
-    epaper_refresh();
+    draw_refresh();
   } else if (memcmp(pCharacteristic->getValue().c_str(), "CLEAR",
                     strlen("CLEAR")) == 0) {
     Serial.println("CLEAR");
-    epaper_clear();
+    draw_clear();
   } else {
     if (!raw_format(image_format)) {
       alloc_memory(pCharacteristic->getData(), pCharacteristic->getLength());
     } else {
       if (image_format == MONO_BUFFER) {
-        Serial.printf("Mono length: %zu\n", pCharacteristic->getLength());
-        Serial.printf("Mono size: %zu\n", mono_buffer_size);
-
         memcpy(output_mono_buffer + mono_buffer_size,
                pCharacteristic->getData(), pCharacteristic->getLength());
         mono_buffer_size += pCharacteristic->getLength();
       }
       if (image_format == COLOR_BUFFER) {
-        Serial.printf("Color length: %zu\n", pCharacteristic->getLength());
-        Serial.printf("Color size: %zu\n", color_buffer_size);
-
         memcpy(output_color_buffer + color_buffer_size,
                pCharacteristic->getData(), pCharacteristic->getLength());
         color_buffer_size += pCharacteristic->getLength();
