@@ -305,8 +305,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
                 (col == w - 1)) // write that last byte! (for w%8!=0 border)
             {
               mono_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_byte;
-              color_buffer[(row)*MAX_COL / 8 + out_col_idx] =
-                  out_color_byte;
+              color_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_color_byte;
               out_col_idx++;
               out_byte = 0xFF;       // white (for w%8!=0 border)
               out_color_byte = 0xFF; // white (for w%8!=0 border)
@@ -606,8 +605,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
                 (col == w - 1)) // write that last byte! (for w%8!=0 border)
             {
               mono_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_byte;
-              color_buffer[(row)*MAX_COL / 8 + out_col_idx] =
-                  out_color_byte;
+              color_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_color_byte;
               out_col_idx++;
               // Serial.printf("PRINT %u, %u\n", row, col);
               out_byte = 0xFF;       // white (for w%8!=0 border)

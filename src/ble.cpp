@@ -75,8 +75,7 @@ void ble_characteristics_callbacks::onWrite(
     if (!raw_format(image_format)) {
       decode_image();
     } else {
-      draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0,
-                 0);
+      draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0, 0);
       mono_buffer_size = 0;
       color_buffer_size = 0;
     }
@@ -93,13 +92,13 @@ void ble_characteristics_callbacks::onWrite(
       alloc_memory(pCharacteristic->getData(), pCharacteristic->getLength());
     } else {
       if (image_format == MONO_BUFFER) {
-        memcpy(mono_buffer + mono_buffer_size,
-               pCharacteristic->getData(), pCharacteristic->getLength());
+        memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
+               pCharacteristic->getLength());
         mono_buffer_size += pCharacteristic->getLength();
       }
       if (image_format == COLOR_BUFFER) {
-        memcpy(color_buffer + color_buffer_size,
-               pCharacteristic->getData(), pCharacteristic->getLength());
+        memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
+               pCharacteristic->getLength());
         color_buffer_size += pCharacteristic->getLength();
       }
     }
