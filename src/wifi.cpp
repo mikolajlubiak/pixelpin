@@ -184,8 +184,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
         uint32_t rowPosition =
             flip ? imageOffset + (height - h) * rowSize : imageOffset;
         bytes_read += skip(client, rowPosition - bytes_read);
-        uint16_t out_idx_row = 0;
-        uint16_t out_idx_col = 0;
+        uint16_t out_col_idx = 0;
         for (uint16_t row = 0; row < h;
              row++, rowPosition += rowSize) // for each line
         {
@@ -200,7 +199,7 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
           uint8_t in_bits = 0;           // for depth <= 8
           uint8_t out_byte = 0xFF;       // white (for w%8!=0 border)
           uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
-          out_idx_col = 0;
+          out_col_idx = 0;
           for (uint16_t col = 0; col < w; col++) // for each pixel
           {
 
@@ -305,16 +304,17 @@ void downloadBitmapFrom_HTTP(const char *host, const char *path,
             if ((7 == col % 8) ||
                 (col == w - 1)) // write that last byte! (for w%8!=0 border)
             {
-              output_color_buffer[out_idx_row][out_idx_col] = out_color_byte;
-              output_mono_buffer[out_idx_row][out_idx_col++] = out_byte;
+              mono_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_byte;
+              color_buffer[(row)*MAX_COL / 8 + out_col_idx] =
+                  out_color_byte;
+              out_col_idx++;
               out_byte = 0xFF;       // white (for w%8!=0 border)
               out_color_byte = 0xFF; // white (for w%8!=0 border)
             }
           } // end pixel
-          out_idx_row++;
         } // end line
-        *out_mono = (uint8_t *)&output_mono_buffer[0][0];
-        *out_color = (uint8_t *)&output_color_buffer[0][0];
+        *out_mono = mono_buffer;
+        *out_color = color_buffer;
 
 #ifdef DEBUG
         Serial.print("downloaded in ");
@@ -485,8 +485,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
         // Serial.print("skip "); Serial.println(rowPosition - bytes_read);
         bytes_read += skip(client, rowPosition - bytes_read);
         // display.clearScreen();
-        uint32_t out_idx_row = 0;
-        uint32_t out_idx_col = 0;
+        uint32_t out_col_idx = 0;
         for (uint16_t row = 0; row < h;
              row++, rowPosition += rowSize) // for each line
         {
@@ -500,7 +499,7 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
           uint8_t in_bits = 0;           // for depth <= 8
           uint8_t out_byte = 0xFF;       // white (for w%8!=0 border)
           uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
-          out_idx_col = 0;
+          out_col_idx = 0;
           for (uint16_t col = 0; col < w; col++) // for each pixel
           {
             yield();
@@ -606,20 +605,21 @@ void downloadBitmapFrom_HTTPS(const char *host, const char *path,
             if ((7 == col % 8) ||
                 (col == w - 1)) // write that last byte! (for w%8!=0 border)
             {
-              output_color_buffer[out_idx_row][out_idx_col] = out_color_byte;
-              output_mono_buffer[out_idx_row][out_idx_col++] = out_byte;
+              mono_buffer[(row)*MAX_COL / 8 + out_col_idx] = out_byte;
+              color_buffer[(row)*MAX_COL / 8 + out_col_idx] =
+                  out_color_byte;
+              out_col_idx++;
               // Serial.printf("PRINT %u, %u\n", row, col);
               out_byte = 0xFF;       // white (for w%8!=0 border)
               out_color_byte = 0xFF; // white (for w%8!=0 border)
             }
           } // end pixel
           // int16_t yrow = (flip ? h - row - 1 : row);
-          // display.writeImage(output_mono_buffer[out_idx_row],
-          // output_color_buffer[out_idx_row], 0, yrow, w, 1);
-          out_idx_row++;
+          // display.writeImage(mono_buffer[out_idx_row],
+          // color_buffer[out_idx_row], 0, yrow, w, 1);
         } // end line
-        *out_mono = (uint8_t *)&output_mono_buffer[0][0];
-        *out_color = (uint8_t *)&output_color_buffer[0][0];
+        *out_mono = mono_buffer;
+        *out_color = color_buffer;
 
 #ifdef DEBUG
         Serial.print("downloaded in ");

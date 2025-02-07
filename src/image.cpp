@@ -52,8 +52,11 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
       if ((7 == col % 8) ||
           (col == width - 1)) // write that last byte! (for w%8!=0 border)
       {
-        output_color_buffer[row + y][out_col_idx + x] = out_color_byte;
-        output_mono_buffer[row + y][x + out_col_idx++] = out_byte;
+        mono_buffer[(row + y) * MAX_COL / 8 + out_col_idx + x] =
+            out_byte;
+        color_buffer[(row + y) * MAX_COL / 8 + out_col_idx + x] =
+            out_color_byte;
+        out_col_idx++;
         out_byte = 0xFF;       // white (for w%8!=0 border)
         out_color_byte = 0xFF; // white (for w%8!=0 border)
       }
@@ -67,7 +70,7 @@ void draw_png(PNGDRAW *pDraw) {
 
   rgb565_to_buffer((uint8_t *)usPixels, pDraw->iWidth, 1, 0, 0);
 
-  draw_write(output_mono_buffer[0], output_color_buffer[0], pDraw->iWidth, 1, 0,
+  draw_write(mono_buffer, color_buffer, pDraw->iWidth, 1, 0,
              pDraw->y);
 }
 
@@ -76,7 +79,8 @@ int draw_jpeg(JPEGDRAW *pDraw) {
                    0);
 
   for (uint16_t i = 0; i < pDraw->iHeight; i++) {
-    draw_write(output_mono_buffer[i], output_color_buffer[i], pDraw->iWidth, 1,
+    draw_write(mono_buffer + (i * MAX_COL / 8),
+               color_buffer + (i * MAX_COL / 8), pDraw->iWidth, 1,
                pDraw->x, pDraw->y + i);
   }
 

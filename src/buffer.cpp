@@ -1,4 +1,6 @@
 #include "buffer.h"
 
-uint8_t output_mono_buffer[MAX_ROW][MAX_COL / 8];
-uint8_t output_color_buffer[MAX_ROW][MAX_COL / 8];
+#include "stdlib.h"
+
+uint8_t *mono_buffer = (uint8_t *)malloc(BUFFER_SIZE);
+uint8_t *color_buffer = (uint8_t *)malloc(BUFFER_SIZE);

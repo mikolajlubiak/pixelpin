@@ -63,18 +63,20 @@ void ble_characteristics_callbacks::onWrite(
                     strlen("MONO BUFFER")) == 0) {
     Serial.println("MONO BUFFER");
     image_format = MONO_BUFFER;
+    memset(mono_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "COLOR BUFFER",
                     strlen("COLOR BUFFER")) == 0) {
     Serial.println("COLOR BUFFER");
     image_format = COLOR_BUFFER;
+    memset(color_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "END",
                     strlen("END")) == 0) {
     Serial.println("END");
     if (!raw_format(image_format)) {
       decode_image();
     } else {
-      draw_write((uint8_t *)output_mono_buffer, (uint8_t *)output_color_buffer,
-                 MAX_COL, MAX_ROW, 0, 0);
+      draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0,
+                 0);
       mono_buffer_size = 0;
       color_buffer_size = 0;
     }
@@ -91,12 +93,12 @@ void ble_characteristics_callbacks::onWrite(
       alloc_memory(pCharacteristic->getData(), pCharacteristic->getLength());
     } else {
       if (image_format == MONO_BUFFER) {
-        memcpy(output_mono_buffer + mono_buffer_size,
+        memcpy(mono_buffer + mono_buffer_size,
                pCharacteristic->getData(), pCharacteristic->getLength());
         mono_buffer_size += pCharacteristic->getLength();
       }
       if (image_format == COLOR_BUFFER) {
-        memcpy(output_color_buffer + color_buffer_size,
+        memcpy(color_buffer + color_buffer_size,
                pCharacteristic->getData(), pCharacteristic->getLength());
         color_buffer_size += pCharacteristic->getLength();
       }
