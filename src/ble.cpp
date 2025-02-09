@@ -20,22 +20,21 @@ BLECharacteristic *pCharacteristic;
 
 void ble_init() {
   BLEDevice::init("edown");
-  BLEServer *pServer = BLEDevice::createServer();
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-  pCharacteristic = pService->createCharacteristic(
-      CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ |
-                               BLECharacteristic::PROPERTY_WRITE |
-                               BLECharacteristic::PROPERTY_INDICATE);
 
-  BLEDescriptor descriptor = BLEUUID((uint16_t)0x2902);
-  pCharacteristic->addDescriptor(&descriptor);
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new ble_server_callbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  pCharacteristic = pService->createCharacteristic(
+      CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE);
   pCharacteristic->setCallbacks(new ble_characteristics_callbacks());
+
   pService->start();
+
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(
-      0x06); // functions that help with iPhone connections issue
   pAdvertising->setMinPreferred(0x12);
   BLEDevice::startAdvertising();
 }
@@ -103,4 +102,12 @@ void ble_characteristics_callbacks::onWrite(
       }
     }
   }
+}
+
+void ble_server_callbacks::onConnect(BLEServer *pServer) {
+  BLEDevice::startAdvertising();
+};
+
+void ble_server_callbacks::onDisconnect(BLEServer *pServer) {
+  BLEDevice::startAdvertising();
 }

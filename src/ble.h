@@ -4,6 +4,7 @@
 #include <string>
 
 #include <BLECharacteristic.h>
+#include <BLEServer.h>
 
 void ble_init();
 
@@ -15,4 +16,10 @@ size_t ble_get_len();
 
 class ble_characteristics_callbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic);
+};
+
+class ble_server_callbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer);
+
+  void onDisconnect(BLEServer *pServer);
 };
