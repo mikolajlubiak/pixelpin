@@ -7,7 +7,6 @@
 #include "common.h"
 
 #include "wifi_helper.h"
-// #include "gxepd/gxepd_select.h"
 
 #include "buffer.h"
 
@@ -17,7 +16,6 @@ const char *password = "PASSWORD";
 #define HTTPS 443
 
 static const uint16_t input_buffer_pixels = 800; // may affect performance
-// static const uint16_t input_buffer_pixels = 960; // may affect performance
 
 static const uint16_t max_palette_pixels = 256; // for depth <= 8
 
