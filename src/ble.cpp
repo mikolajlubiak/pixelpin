@@ -50,6 +50,9 @@ void ble_characteristics_callbacks::onWrite(
   if (memcmp(pCharacteristic->getValue().c_str(), "BEGIN", strlen("BEGIN")) ==
       0) {
     Serial.println("BEGIN");
+    reset_image();
+    mono_buffer_size = 0;
+    color_buffer_size = 0;
   } else if (memcmp(pCharacteristic->getValue().c_str(), "PNG",
                     strlen("PNG")) == 0) {
     Serial.println("PNG");
@@ -75,8 +78,6 @@ void ble_characteristics_callbacks::onWrite(
       decode_image();
     } else {
       draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0, 0);
-      mono_buffer_size = 0;
-      color_buffer_size = 0;
     }
   } else if (memcmp(pCharacteristic->getValue().c_str(), "DRAW",
                     strlen("DRAW")) == 0) {

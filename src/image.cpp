@@ -6,9 +6,9 @@
 
 #include <Arduino.h>
 
-size_t data_alloc = 256;
-uint8_t *image_data = (uint8_t *)malloc(data_alloc);
 size_t data_size = 0;
+size_t data_alloc = 0;
+uint8_t *image_data = nullptr;
 
 PNG png;
 JPEGDEC jpeg;
@@ -129,11 +129,13 @@ void decode_image() {
   default:
     break;
   }
+}
 
+void reset_image() {
   free(image_data);
   data_size = 0;
-  data_alloc = 256;
-  image_data = (uint8_t *)malloc(data_alloc);
+  data_alloc = 0;
+  image_data = nullptr;
 }
 
 void alloc_memory(uint8_t *data, size_t length) {

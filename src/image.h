@@ -27,4 +27,6 @@ int draw_jpeg(JPEGDRAW *pDraw);
 
 void decode_image();
 
+void reset_image();
+
 void alloc_memory(uint8_t *data, size_t length);
