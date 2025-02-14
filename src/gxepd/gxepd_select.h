@@ -253,8 +253,8 @@ GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)>
 #else
 GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)>
     display(
-        GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/17, /*RST=*/16,
-                            /*BUSY=*/4)); // my suggested wiring and proto board
+        GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/1, /*RST=*/3,
+                            /*BUSY=*/2)); // my suggested wiring and proto board
 // GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)>
 // display(GxEPD2_DRIVER_CLASS(/*CS=5*/ 5, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/
 // 4)); // LILYGO_T5_V2.4.1 GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS,

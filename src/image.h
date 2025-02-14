@@ -3,27 +3,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <JPEGDEC.h>
-#include <PNGdec.h>
-
-enum ImageFormat {
-  PNG_FORMAT,
-  JPEG_FORMAT,
-  BMP_FORMAT,
+enum BufferType {
   MONO_BUFFER,
   COLOR_BUFFER,
 };
 
-extern ImageFormat image_format;
-
-bool raw_format(ImageFormat format);
+extern BufferType buffer_type;
 
 void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                       uint16_t x = 0, uint16_t y = 0);
-
-void draw_png(PNGDRAW *pDraw);
-
-int draw_jpeg(JPEGDRAW *pDraw);
 
 void decode_image();
 

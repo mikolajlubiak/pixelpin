@@ -10,10 +10,7 @@ size_t data_size = 0;
 size_t data_alloc = 0;
 uint8_t *image_data = nullptr;
 
-PNG png;
-JPEGDEC jpeg;
-
-ImageFormat image_format;
+BufferType buffer_type;
 
 void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                       uint16_t x, uint16_t y) {
@@ -63,74 +60,6 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
   }
 }
 
-void draw_png(PNGDRAW *pDraw) {
-  uint16_t *usPixels = (uint16_t *)malloc(2 * 128);
-  png.getLineAsRGB565(pDraw, usPixels, PNG_RGB565_LITTLE_ENDIAN, 0xffffffff);
-
-  rgb565_to_buffer((uint8_t *)usPixels, pDraw->iWidth, 1, 0, 0);
-
-  draw_write(mono_buffer, color_buffer, pDraw->iWidth, 1, 0, pDraw->y);
-}
-
-int draw_jpeg(JPEGDRAW *pDraw) {
-  rgb565_to_buffer((uint8_t *)pDraw->pPixels, pDraw->iWidth, pDraw->iHeight, 0,
-                   0);
-
-  for (uint16_t i = 0; i < pDraw->iHeight; i++) {
-    draw_write(mono_buffer + (i * MAX_COL / 8),
-               color_buffer + (i * MAX_COL / 8), pDraw->iWidth, 1, pDraw->x,
-               pDraw->y + i);
-  }
-
-  return 1;
-}
-
-void decode_image() {
-  switch (image_format) {
-  case PNG_FORMAT:
-    if (png.openRAM(image_data, data_size, draw_png) != PNG_SUCCESS) {
-      Serial.println("[decode_image] - Error: "
-                     "png.openRAM failed");
-    }
-    if (png.decode(NULL, 0) != PNG_SUCCESS) {
-      Serial.println("[decode_image] - Error: "
-                     "png.decode failed");
-    }
-    png.close();
-
-#ifdef DEBUG
-    Serial.println("DECODING PNG");
-    Serial.printf("Image specs: (%d x %d), %d bpp, pixel type: %d\n",
-                  png.getWidth(), png.getHeight(), png.getBpp(),
-                  png.getPixelType());
-#endif
-    break;
-
-  case JPEG_FORMAT:
-    if (jpeg.openRAM(image_data, data_size, draw_jpeg) != JPEG_SUCCESS) {
-      Serial.println("[decode_image] - Error: "
-                     "jpeg.openRAM failed");
-    }
-    jpeg.setPixelType(RGB565_LITTLE_ENDIAN);
-    if (jpeg.decode(0, 0, 0) != JPEG_SUCCESS) {
-      Serial.println("[decode_image] - Error: "
-                     "jpeg.decode failed");
-    }
-    jpeg.close();
-
-#ifdef DEBUG
-    Serial.println("DECODING JPEG");
-    Serial.printf("Image size: %d x %d, orientation: %d, bpp: %d\n",
-                  jpeg.getWidth(), jpeg.getHeight(), jpeg.getOrientation(),
-                  jpeg.getBpp());
-#endif
-    break;
-
-  default:
-    break;
-  }
-}
-
 void reset_image() {
   free(image_data);
   data_size = 0;
@@ -146,8 +75,4 @@ void alloc_memory(uint8_t *data, size_t length) {
 
   memcpy(image_data + data_size, data, length);
   data_size += length;
-}
-
-bool raw_format(ImageFormat format) {
-  return format == MONO_BUFFER || format == COLOR_BUFFER;
 }

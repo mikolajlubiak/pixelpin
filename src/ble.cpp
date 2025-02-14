@@ -53,32 +53,20 @@ void ble_characteristics_callbacks::onWrite(
     reset_image();
     mono_buffer_size = 0;
     color_buffer_size = 0;
-  } else if (memcmp(pCharacteristic->getValue().c_str(), "PNG",
-                    strlen("PNG")) == 0) {
-    Serial.println("PNG");
-    image_format = PNG_FORMAT;
-  } else if (memcmp(pCharacteristic->getValue().c_str(), "JPEG",
-                    strlen("JPEG")) == 0) {
-    Serial.println("JPEG");
-    image_format = JPEG_FORMAT;
   } else if (memcmp(pCharacteristic->getValue().c_str(), "MONO BUFFER",
                     strlen("MONO BUFFER")) == 0) {
     Serial.println("MONO BUFFER");
-    image_format = MONO_BUFFER;
+    buffer_type = MONO_BUFFER;
     memset(mono_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "COLOR BUFFER",
                     strlen("COLOR BUFFER")) == 0) {
     Serial.println("COLOR BUFFER");
-    image_format = COLOR_BUFFER;
+    buffer_type = COLOR_BUFFER;
     memset(color_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "END",
                     strlen("END")) == 0) {
     Serial.println("END");
-    if (!raw_format(image_format)) {
-      decode_image();
-    } else {
-      draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0, 0);
-    }
+    draw_write(mono_buffer, color_buffer, MAX_COL, MAX_ROW, 0, 0);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "DRAW",
                     strlen("DRAW")) == 0) {
     Serial.println("DRAW");
@@ -88,19 +76,15 @@ void ble_characteristics_callbacks::onWrite(
     Serial.println("CLEAR");
     draw_clear();
   } else {
-    if (!raw_format(image_format)) {
-      alloc_memory(pCharacteristic->getData(), pCharacteristic->getLength());
-    } else {
-      if (image_format == MONO_BUFFER) {
-        memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
-               pCharacteristic->getLength());
-        mono_buffer_size += pCharacteristic->getLength();
-      }
-      if (image_format == COLOR_BUFFER) {
-        memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
-               pCharacteristic->getLength());
-        color_buffer_size += pCharacteristic->getLength();
-      }
+    if (buffer_type == MONO_BUFFER) {
+      memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
+             pCharacteristic->getLength());
+      mono_buffer_size += pCharacteristic->getLength();
+    }
+    if (buffer_type == COLOR_BUFFER) {
+      memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
+             pCharacteristic->getLength());
+      color_buffer_size += pCharacteristic->getLength();
     }
   }
 }
