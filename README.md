@@ -3,9 +3,13 @@
 ### Embedded code for the EDown pins.
 
 ## Showcase:
-* **App**:
-    * ![App showcase](docs/app.jpg "App showcase")
 * **E-Paper**:
-    * ![E-Paper showcase](docs/epd.jpg "E-Paper showcase")
+    * ![E-Paper showcase](docs/epd1.jpg "E-Paper showcase")
     * ![E-Paper showcase](docs/epd2.jpg "E-Paper showcase")
     * ![E-Paper showcase](docs/epd3.jpg "E-Paper showcase")
+    * ![E-Paper showcase](docs/epd4.jpg "E-Paper showcase")
+    * ![E-Paper showcase](docs/epd5.jpg "E-Paper showcase")
+    * ![E-Paper showcase](docs/epd6.jpg "E-Paper showcase")
+    * ![E-Paper showcase](docs/epd7.jpg "E-Paper showcase")
+* **App**:
+    * ![App showcase](docs/app.jpg "App showcase")
