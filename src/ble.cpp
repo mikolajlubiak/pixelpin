@@ -1,5 +1,7 @@
 #include "ble.h"
 
+#include <string>
+
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -12,6 +14,13 @@
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+enum BleState {
+  UPLOAD,
+  SLEEP,
+};
+
+BleState ble_state;
 
 size_t mono_buffer_size = 0;
 size_t color_buffer_size = 0;
@@ -57,11 +66,13 @@ void ble_characteristics_callbacks::onWrite(
                     strlen("MONO BUFFER")) == 0) {
     Serial.println("MONO BUFFER");
     buffer_type = MONO_BUFFER;
+    ble_state = UPLOAD;
     memset(mono_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "COLOR BUFFER",
                     strlen("COLOR BUFFER")) == 0) {
     Serial.println("COLOR BUFFER");
     buffer_type = COLOR_BUFFER;
+    ble_state = UPLOAD;
     memset(color_buffer, 0xFF, BUFFER_SIZE);
   } else if (memcmp(pCharacteristic->getValue().c_str(), "END",
                     strlen("END")) == 0) {
@@ -75,18 +86,30 @@ void ble_characteristics_callbacks::onWrite(
                     strlen("CLEAR")) == 0) {
     Serial.println("CLEAR");
     draw_clear();
+  } else if (memcmp(pCharacteristic->getValue().c_str(), "SLEEP",
+                    strlen("SLEEP")) == 0) {
+    Serial.println("SLEEP");
+    ble_state = SLEEP;
   } else {
-    if (buffer_type == MONO_BUFFER) {
-      memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
-             pCharacteristic->getLength());
-      mono_buffer_size += pCharacteristic->getLength();
-    }
-    if (buffer_type == COLOR_BUFFER) {
-      memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
-             pCharacteristic->getLength());
-      color_buffer_size += pCharacteristic->getLength();
+    if (ble_state == UPLOAD) {
+      if (buffer_type == MONO_BUFFER) {
+        memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
+               pCharacteristic->getLength());
+        mono_buffer_size += pCharacteristic->getLength();
+      }
+      if (buffer_type == COLOR_BUFFER) {
+        memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
+               pCharacteristic->getLength());
+        color_buffer_size += pCharacteristic->getLength();
+      }
+    } else if (ble_state == SLEEP) {
+      uint64_t time = stoi(pCharacteristic->getValue());
+      esp_sleep_enable_timer_wakeup(time);
+      Serial.flush();
+      esp_deep_sleep_start();
     }
   }
+  Serial.flush();
 }
 
 void ble_server_callbacks::onConnect(BLEServer *pServer) {

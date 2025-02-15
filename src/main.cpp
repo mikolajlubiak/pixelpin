@@ -13,6 +13,7 @@ void setup() {
   ble_init();
 
   Serial.println("done");
+  Serial.flush();
 }
 
 void loop() {}

@@ -10,3 +10,5 @@
 #define BUFFER_SIZE (MAX_ROW * MAX_COL / 8)
 
 uint32_t clamp(uint32_t val, uint32_t min, uint32_t max);
+
+uint64_t uint8_to_uint64(const uint8_t *buffer);
