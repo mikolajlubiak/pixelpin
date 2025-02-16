@@ -1,6 +1,5 @@
 #include "image.h"
 
-#include "buffer.h"
 #include "common.h"
 #include "draw.h"
 
@@ -12,15 +11,17 @@ uint8_t *image_data = nullptr;
 
 BufferType buffer_type;
 
+// Convert RGB565 pixel data and write it to buffers
 void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                       uint16_t x, uint16_t y) {
+  constexpr bool with_color = true;
+
   uint16_t in_idx = 0;
   uint8_t red, green, blue;
   bool whitish = false;
   bool colored = false;
-  bool with_color = true;
-  uint8_t out_byte = 0xFF;       // white (for w%8!=0 border)
-  uint8_t out_color_byte = 0xFF; // white (for w%8!=0 border)
+  uint8_t out_byte = 0xFF;       // white
+  uint8_t out_color_byte = 0xFF; // no color
   uint16_t out_col_idx = 0;
 
   for (uint16_t row = 0; row < height; row++) {
@@ -39,6 +40,8 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
                             (red + 0x10 > green + blue))) ||
           (green > 0xC8 && red > 0xC8 && blue < 0x40); // reddish or yellowish?
 
+      // 1 bit per pixel
+      // Set the bit to 0 if colored or black
       if (whitish) {
         // keep white
       } else if (colored && with_color) {
@@ -46,6 +49,8 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
       } else {
         out_byte &= ~(0x80 >> col % 8); // black
       }
+
+      // Write to buffers only after the whole byte is filled
       if ((7 == col % 8) ||
           (col == width - 1)) // write that last byte! (for w%8!=0 border)
       {
@@ -53,8 +58,8 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
         color_buffer[(row + y) * MAX_COL / 8 + out_col_idx + x] =
             out_color_byte;
         out_col_idx++;
-        out_byte = 0xFF;       // white (for w%8!=0 border)
-        out_color_byte = 0xFF; // white (for w%8!=0 border)
+        out_byte = 0xFF;       // reset color to white
+        out_color_byte = 0xFF; // reset to no color
       }
     }
   }

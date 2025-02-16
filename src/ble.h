@@ -8,17 +8,11 @@
 
 void ble_init();
 
-std::string ble_get_value();
-
-uint8_t *ble_get_data();
-
-size_t ble_get_len();
-
-class ble_characteristics_callbacks : public BLECharacteristicCallbacks {
+class EDownBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic);
 };
 
-class ble_server_callbacks : public BLEServerCallbacks {
+class EDownBLEServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer);
 
   void onDisconnect(BLEServer *pServer);

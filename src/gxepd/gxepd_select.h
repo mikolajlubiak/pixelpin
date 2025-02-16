@@ -70,7 +70,7 @@ GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)>
                                 /*BUSY=*/18));
 #else
 GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)>
-    display(GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/1, /*RST=*/3,
+    display(GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/1, /*RST=*/10,
                                 /*BUSY=*/2));
 #endif
 #else // GxEPD2_1248 or GxEPD2_1248c

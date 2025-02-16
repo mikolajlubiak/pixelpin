@@ -1,5 +1,12 @@
 #include "common.h"
 
+#include <stdlib.h>
+
+uint8_t *mono_buffer = (uint8_t *)malloc(BUFFER_SIZE);
+uint8_t *color_buffer = (uint8_t *)malloc(BUFFER_SIZE);
+
+uint64_t timer = 0;
+
 uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
   if (val < min) {
     return min;
