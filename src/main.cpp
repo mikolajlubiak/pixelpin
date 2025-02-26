@@ -15,7 +15,8 @@ void setup() {
   ble_init();
 
   // Wake up after pressing button
-  esp_sleep_enable_ext0_wakeup(GPIO_NUM_3, 1);
+  esp_deep_sleep_enable_gpio_wakeup(1ULL << GPIO_NUM_3,
+                                    ESP_GPIO_WAKEUP_GPIO_HIGH);
 
   Serial.println("Initializing done");
 }
