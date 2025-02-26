@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <esp_sleep.h>
 
 #include "ble.h"
 #include "common.h"
@@ -14,8 +15,7 @@ void setup() {
   ble_init();
 
   // Wake up after pressing button
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << GPIO_NUM_3,
-                                    ESP_GPIO_WAKEUP_GPIO_HIGH);
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_3, 1);
 
   Serial.println("Initializing done");
 }
