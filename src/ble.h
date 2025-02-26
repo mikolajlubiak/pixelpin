@@ -8,11 +8,11 @@
 
 void ble_init();
 
-class EDownBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
+class PixelPinBLECharacteristicCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic);
 };
 
-class EDownBLEServerCallbacks : public BLEServerCallbacks {
+class PixelPinBLEServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer);
 
   void onDisconnect(BLEServer *pServer);

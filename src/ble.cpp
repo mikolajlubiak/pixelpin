@@ -19,16 +19,16 @@ size_t mono_buffer_size = 0;
 size_t color_buffer_size = 0;
 
 void ble_init() {
-  BLEDevice::init("edown");
+  BLEDevice::init("PixelPin");
 
   BLEServer *pServer = BLEDevice::createServer();
-  pServer->setCallbacks(new EDownBLEServerCallbacks());
+  pServer->setCallbacks(new PixelPinBLEServerCallbacks());
 
   BLEService *pService = pServer->createService(SERVICE_UUID);
 
   BLECharacteristic *pCharacteristic = pService->createCharacteristic(
       CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE);
-  pCharacteristic->setCallbacks(new EDownBLECharacteristicCallbacks());
+  pCharacteristic->setCallbacks(new PixelPinBLECharacteristicCallbacks());
 
   pService->start();
 
@@ -39,7 +39,7 @@ void ble_init() {
   BLEDevice::startAdvertising();
 }
 
-void EDownBLECharacteristicCallbacks::onWrite(
+void PixelPinBLECharacteristicCallbacks::onWrite(
     BLECharacteristic *pCharacteristic) {
   // Restart the inactivity timer
   timer = esp_timer_get_time();
@@ -87,10 +87,10 @@ void EDownBLECharacteristicCallbacks::onWrite(
 }
 
 // Advertise non stop
-void EDownBLEServerCallbacks::onConnect(BLEServer *pServer) {
+void PixelPinBLEServerCallbacks::onConnect(BLEServer *pServer) {
   BLEDevice::startAdvertising();
 };
 
-void EDownBLEServerCallbacks::onDisconnect(BLEServer *pServer) {
+void PixelPinBLEServerCallbacks::onDisconnect(BLEServer *pServer) {
   BLEDevice::startAdvertising();
 }
