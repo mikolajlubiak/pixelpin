@@ -22,8 +22,8 @@ void setup() {
 }
 
 void loop() {
-  // Sleep after 1 minute of inactivity
-  if (esp_timer_get_time() - timer >= static_cast<uint64_t>(6e+7)) {
+  // Sleep after 5 minutes of inactivity
+  if (esp_timer_get_time() - timer >= static_cast<uint64_t>(3e+8)) {
     Serial.println("Going into deep sleep mode");
     esp_deep_sleep_start();
   }
