@@ -30,7 +30,7 @@ void setup() {
 
 void loop() {
   // Sleep after 5 minutes of inactivity
-  if (esp_timer_get_time() - timer >= TIMER) {
+  if (esp_timer_get_time() - timer > TIMER) {
     common_clean();
     image_clean();
     ble_clean();

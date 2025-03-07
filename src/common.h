@@ -9,7 +9,7 @@
 extern uint8_t *mono_buffer;
 extern uint8_t *color_buffer;
 
-extern uint64_t timer;
+extern int64_t timer;
 
 uint32_t clamp(uint32_t val, uint32_t min, uint32_t max);
 

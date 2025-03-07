@@ -1,11 +1,12 @@
 #include "common.h"
 
 #include <stdlib.h>
+#include <esp_timer.h>
 
 uint8_t *mono_buffer;
 uint8_t *color_buffer;
 
-uint64_t timer;
+int64_t timer;
 
 uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
   if (val < min) {
@@ -29,8 +30,8 @@ void common_init() {
 
   mono_buffer = (uint8_t *)malloc(BUFFER_SIZE);
   color_buffer = (uint8_t *)malloc(BUFFER_SIZE);
-  
-  timer = 0;
+
+  timer = esp_timer_get_time();
 }
 
 void common_clean() {
