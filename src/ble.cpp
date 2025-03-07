@@ -15,10 +15,12 @@
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-size_t mono_buffer_size = 0;
-size_t color_buffer_size = 0;
+size_t mono_buffer_size;
+size_t color_buffer_size;
 
 void ble_init() {
+  ble_clean();
+  
   BLEDevice::init("PixelPin");
 
   BLEServer *pServer = BLEDevice::createServer();
@@ -47,7 +49,7 @@ void PixelPinBLECharacteristicCallbacks::onWrite(
   if (memcmp(pCharacteristic->getValue().c_str(), "BEGIN", strlen("BEGIN")) ==
       0) {
     Serial.println("BEGIN");
-    reset_image();
+    image_clean();
     mono_buffer_size = 0;
     color_buffer_size = 0;
   } else if (memcmp(pCharacteristic->getValue().c_str(), "MONO BUFFER",
@@ -93,4 +95,9 @@ void PixelPinBLEServerCallbacks::onConnect(BLEServer *pServer) {
 
 void PixelPinBLEServerCallbacks::onDisconnect(BLEServer *pServer) {
   BLEDevice::startAdvertising();
+}
+
+void ble_clean() {
+  mono_buffer_size = 0;
+  color_buffer_size = 0;
 }

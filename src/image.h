@@ -6,6 +6,7 @@
 enum BufferType {
   MONO_BUFFER,
   COLOR_BUFFER,
+  NONE,
 };
 
 extern BufferType buffer_type;
@@ -15,6 +16,6 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
 
 void decode_image();
 
-void reset_image();
+void image_clean();
 
 void alloc_memory(uint8_t *data, size_t length);

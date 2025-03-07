@@ -17,3 +17,5 @@ class PixelPinBLEServerCallbacks : public BLEServerCallbacks {
 
   void onDisconnect(BLEServer *pServer);
 };
+
+void ble_clean();

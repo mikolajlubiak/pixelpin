@@ -5,9 +5,9 @@
 
 #include <Arduino.h>
 
-size_t data_size = 0;
-size_t data_alloc = 0;
-uint8_t *image_data = nullptr;
+size_t data_size;
+size_t data_alloc;
+uint8_t *image_data;
 
 BufferType buffer_type;
 
@@ -65,11 +65,15 @@ void rgb565_to_buffer(uint8_t *rgb565, uint16_t width, uint16_t height,
   }
 }
 
-void reset_image() {
-  free(image_data);
+void image_clean() {
+  if (image_data) {
+    free(image_data);
+  }
+  image_data = nullptr;
+
   data_size = 0;
   data_alloc = 0;
-  image_data = nullptr;
+  buffer_type = NONE;
 }
 
 void alloc_memory(uint8_t *data, size_t length) {
