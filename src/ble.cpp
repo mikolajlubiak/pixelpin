@@ -12,15 +12,15 @@
 #include "draw.h"
 #include "image.h"
 
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SERVICE_UUID "3c9a8264-7d7e-41d3-963f-798e23f8b28f"
+#define CHARACTERISTIC_UUID "59dee772-cb42-417b-82fe-3542909614bb"
 
 size_t mono_buffer_size;
 size_t color_buffer_size;
 
 void ble_init() {
   ble_clean();
-  
+
   BLEDevice::init("PixelPin");
 
   BLEServer *pServer = BLEDevice::createServer();
