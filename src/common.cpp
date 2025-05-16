@@ -1,12 +1,14 @@
 #include "common.h"
 
 #include <stdlib.h>
+
+#ifdef ARDUINO_ESP32C3_DEV
 #include <esp_timer.h>
+#endif
 
-uint8_t *mono_buffer;
-uint8_t *color_buffer;
-
+#ifdef ARDUINO_ESP32C3_DEV
 int64_t timer;
+#endif
 
 uint32_t clamp(uint32_t val, uint32_t min, uint32_t max) {
   if (val < min) {
@@ -28,23 +30,13 @@ uint64_t uint8_to_uint64(const uint8_t *buffer) {
 void common_init() {
   common_clean();
 
-  mono_buffer = (uint8_t *)malloc(BUFFER_SIZE);
-  color_buffer = (uint8_t *)malloc(BUFFER_SIZE);
-
+#ifdef ARDUINO_ESP32C3_DEV
   timer = esp_timer_get_time();
+#endif
 }
 
 void common_clean() {
-  if (mono_buffer) {
-    free(mono_buffer);
-  }
-
-  if (color_buffer) {
-    free(color_buffer);
-  }
-
-  mono_buffer = nullptr;
-  color_buffer = nullptr;
-
+#ifdef ARDUINO_ESP32C3_DEV
   timer = 0;
+#endif
 }
