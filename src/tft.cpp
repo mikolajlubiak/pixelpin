@@ -2,11 +2,14 @@
 
 #include "tft.h"
 
-#include <TFT_eSPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
 
-#include "tft/tft_select.h"
+#define TFT_CS 10
+#define TFT_DC 8
+#define TFT_RST -1
 
-TFT_eSPI tft = TFT_eSPI();
+Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
 uint8_t *tft_buffer;
 
@@ -15,8 +18,8 @@ size_t tft_buffer_size;
 void tft_init() {
   tft_clean();
 
-  tft.begin();
-  tft.fillScreen(TFT_BLUE);
+  tft.init(240, 320);
+  tft.fillScreen(ST77XX_BLACK);
 
   tft_buffer = (uint8_t *)malloc(BUFFER_SIZE);
 }
@@ -31,12 +34,11 @@ void tft_clean() {
 
 void tft_write(uint8_t *buffer, uint16_t width, uint16_t height, uint16_t x,
                uint16_t y) {
-  tft.startWrite();
-  tft.pushImage(x, y, height, width, buffer);
+  tft.drawRGBBitmap(x, y, (uint16_t *)buffer, width, height);
 }
 
-void tft_clear() { tft.fillScreen(TFT_BLACK); }
+void tft_clear() { tft.fillScreen(ST77XX_BLACK); }
 
-void tft_refresh() { tft.endWrite(); }
+void tft_refresh() {}
 
 #endif

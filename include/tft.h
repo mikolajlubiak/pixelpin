@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include "tft/tft_select.h"
-
 #include <stddef.h>
 #include <stdint.h>
 
