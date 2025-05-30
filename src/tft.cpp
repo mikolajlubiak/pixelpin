@@ -18,7 +18,7 @@ size_t tft_buffer_size;
 void tft_init() {
   tft_clean();
 
-  tft.init(240, 320);
+  tft.init(MAX_ROW, MAX_COL);
   tft.fillScreen(ST77XX_BLACK);
 
   tft_buffer = (uint8_t *)malloc(BUFFER_SIZE);
