@@ -95,6 +95,6 @@ void epaper_write(uint8_t *mono, uint8_t *color, uint16_t width,
 
 void epaper_clear() { display.clearScreen(); }
 
-void epaper_refresh() { display.refresh(); }
+void epaper_refresh() { display.refresh(true); }
 
 #endif
