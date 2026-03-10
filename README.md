@@ -6,6 +6,28 @@ PixelPin is a wearable e-paper display pin powered by an ESP32. It receives imag
 
 This repository contains the ESP32 firmware written in C++. The companion Flutter app lives at [pixelpin-app](https://github.com/mikolajlubiak/pixelpin-app).
 
+## Showcase
+
+<h3 align="center">Device</h3>
+<p align="center">
+  <a href="docs/epd2.jpg"><img src="docs/epd2.jpg" height="220" alt="E-Paper showcase 2"></a>
+  <a href="docs/epd6.jpg"><img src="docs/epd6.jpg" height="220" alt="E-Paper showcase 6"></a>
+</p>
+
+<p align="center">
+  <a href="docs/epd1.jpg"><img src="docs/epd1.jpg" height="220" alt="E-Paper showcase 1"></a>
+  <a href="docs/epd3.jpg"><img src="docs/epd3.jpg" height="220" alt="E-Paper showcase 3"></a>
+  <a href="docs/epd4.jpg"><img src="docs/epd4.jpg" height="220" alt="E-Paper showcase 4"></a>
+  <a href="docs/epd5.jpg"><img src="docs/epd5.jpg" height="220" alt="E-Paper showcase 5"></a>
+  <a href="docs/epd7.jpg"><img src="docs/epd7.jpg" height="220" alt="E-Paper showcase 7"></a>
+</p>
+
+<h3 align="center">App</h3>
+<p align="center">
+  <a href="docs/app1.jpg"><img src="docs/app1.jpg" height="220" alt="App showcase 1"></a>
+  <a href="docs/app2.jpg"><img src="docs/app2.jpg" height="220" alt="App showcase 2"></a>
+</p>
+
 ## Features
 
 - **BLE image transfer** using a custom binary protocol with text-based command framing and raw binary data streaming
@@ -108,17 +130,3 @@ The wake-up button connects to **GPIO 3** on ESP32-C3.
 - [BLE Protocol Specification](docs/BLE_PROTOCOL.md)
 - [Image Processing Pipeline](docs/IMAGE_PROCESSING.md)
 - [Contributing Guide](CONTRIBUTING.md)
-
-## Showcase
-
-* **E-Paper**:
-    * ![E-Paper showcase](docs/epd1.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd2.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd3.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd4.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd5.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd6.jpg "E-Paper showcase")
-    * ![E-Paper showcase](docs/epd7.jpg "E-Paper showcase")
-* **App**:
-    * ![App showcase](docs/app1.jpg "App showcase")
-    * ![App showcase](docs/app2.jpg "App showcase")
