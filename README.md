@@ -2,7 +2,9 @@
 
 # PixelPin
 
-PixelPin is a wearable e-paper display pin powered by an ESP32. It receives images over Bluetooth Low Energy (BLE) from a companion Flutter app using a custom binary protocol, applies Floyd-Steinberg dithering to convert full-color images to a 3-color (black, white, red) palette, and renders them to a 2.9-inch tri-color e-paper display. The device enters deep sleep after 5 minutes of inactivity and wakes on a button press, making it suitable for wearable use.
+PixelPin is a wearable Bluetooth e-paper badge. The ESP32 firmware runs a Bluetooth Low Energy GATT server with a custom write-only protocol: a companion Flutter app streams an image as two 1-bit planes (black and red), the firmware assembles them in two framebuffers and drives a 2.9-inch 128×296 black/white/red e-paper panel through GxEPD2. On the ESP32-C3 build the badge deep-sleeps after 5 minutes without BLE traffic and wakes on a button press.
+
+Image conversion (rotate, resize, crop, optional dithering, packing into bit planes) runs in the app, so the badge receives a ready-to-display 9,472-byte image. An earlier version downloaded and decoded PNG/JPEG on the device over Wi-Fi; moving that work to the phone let the firmware drop Wi-Fi and fit the ESP32-C3. The build is written up in [Paged Out! #6](https://pagedout.institute/download/PagedOut_006.pdf#page=31).
 
 This repository contains the ESP32 firmware written in C++. The companion Flutter app lives at [pixelpin-app](https://github.com/mikolajlubiak/pixelpin-app).
 
@@ -30,33 +32,32 @@ This repository contains the ESP32 firmware written in C++. The companion Flutte
 
 ## Features
 
-- **BLE image transfer** using a custom binary protocol with text-based command framing and raw binary data streaming
-- **Floyd-Steinberg dithering** for high-quality 3-color (black/white/red) rendering on e-paper
-- **Custom state machine** for reliable chunked BLE transfers across multiple write operations
-- **Dual display support**: 2.9-inch tri-color e-paper (primary) or 240×320 TFT LCD (via compile flag)
-- **Power management**: deep sleep after 5 minutes of inactivity, GPIO wake-up on button press (ESP32-C3)
-- **ESP32 firmware** in C++ using the Arduino framework via PlatformIO
-- **Companion Flutter app** for image selection, processing, and BLE transmission
+- **Custom BLE protocol:** one write-only GATT characteristic carrying text commands (`BEGIN`, `MONO BUFFER`, `COLOR BUFFER`, `END`, `DRAW`, `CLEAR`) and raw image chunks; each chunk is appended at a tracked offset into the active framebuffer
+- **Two 1-bit framebuffers:** 4,736 bytes each for the black and red planes, written to the panel controller in one `writeImage` call and shown with a full refresh
+- **Power management (ESP32-C3):** inactivity timer reset on every BLE write; deep sleep after 5 minutes, wake-up on GPIO 3
+- **Display abstraction:** a small `draw_*` layer selects the e-paper panel or a 320×240 ST7789 TFT (experimental) at compile time
+- **Companion Flutter app** ([pixelpin-app](https://github.com/mikolajlubiak/pixelpin-app)): image selection, rotate/resize/crop to 128×296, optional Floyd–Steinberg, ordered or Riemersma dithering, conversion to black/red bit planes, and a high-priority BLE connection during upload
 
 ## Tech Stack
 
-`C++` `ESP32` `BLE` `FreeRTOS` `E-Paper` `Flutter` `PlatformIO` `GxEPD2`
+`C++` `ESP32-C3` `ESP32-S3` `Arduino` `BLE` `SPI` `E-Paper` `GxEPD2` `PlatformIO` `Flutter`
 
 ## How It Works
 
 ```
-Phone App  ──BLE──►  ESP32  ──RGB565──►  Dithering  ──1-bit buffers──►  E-Paper Display
-(Flutter)             |                  (Floyd-                          (black/white/red)
-                      |                   Steinberg)
-                      └── Deep sleep after 5 min inactivity
+Phone app (Flutter)                          ESP32 firmware                      E-paper panel
+ pick image                                   BLE GATT server                     2.9" 128x296
+ rotate / resize / crop  ──BLE writes──►      command parser  ──GxEPD2 / SPI──►   black/white/red
+ optional dithering        (512-byte          two 1-bit framebuffers
+ black + red bit planes     chunks)           deep sleep after 5 min idle (C3)
 ```
 
-1. The Flutter app converts the selected image to RGB565 format and sends it over BLE using the [custom binary protocol](docs/BLE_PROTOCOL.md).
-2. The ESP32 firmware receives the image in chunks, accumulating data into two 1-bit framebuffers (monochrome and color).
-3. After the full image is received, the firmware runs Floyd-Steinberg dithering, mapping each pixel to one of three values: black, white, or red.
-4. The two framebuffers are sent to the e-paper display driver (GxEPD2), which handles the SPI communication and display refresh cycle.
+1. The app converts the selected image into two 1-bit planes (black and red, 128×296, MSB first) and sends them with the [custom BLE protocol](docs/BLE_PROTOCOL.md): `BEGIN`, `MONO BUFFER` + data, `COLOR BUFFER` + data, `END`, `DRAW`.
+2. The firmware appends each data chunk to the active framebuffer at its current offset.
+3. On `END` it writes both planes to the panel controller's memory through GxEPD2; on `DRAW` it triggers a full refresh.
+4. Every BLE write restarts the inactivity timer; after 5 minutes without one, the ESP32-C3 build enters deep sleep until the wake button is pressed.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed system overview, [docs/BLE_PROTOCOL.md](docs/BLE_PROTOCOL.md) for the full protocol specification, and [docs/IMAGE_PROCESSING.md](docs/IMAGE_PROCESSING.md) for the image processing pipeline.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the firmware structure and [docs/BLE_PROTOCOL.md](docs/BLE_PROTOCOL.md) for the protocol specification.
 
 ## Build Instructions
 
@@ -64,7 +65,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for a detailed system overview,
 
 - [PlatformIO](https://platformio.org/) (CLI or VS Code extension)
 - ESP32-C3 or ESP32-S3 development board
-- 2.9-inch tri-color e-paper display (GxEPD2_290_C90c) **or** ST7789 TFT (240×320)
+- 2.9-inch 128×296 black/white/red e-paper display supported by GxEPD2's `GxEPD2_290_C90c` driver **or** an ST7789 TFT (320×240, experimental)
 
 ### Build and Flash
 
@@ -79,8 +80,8 @@ pio run -e esp32-c3-devkitm-1 --target upload
 # Flash to ESP32-S3 with e-paper display
 pio run -e esp32-s3-devkitm-1 --target upload
 
-# Monitor serial output
-pio device monitor
+# Monitor serial output (GxEPD2 switches the port to 115200 baud for its diagnostics)
+pio device monitor -b 115200
 ```
 
 ### Display Selection
@@ -90,7 +91,7 @@ The firmware supports two display backends selected at compile time via build fl
 | Flag    | Display               | Resolution | Colors   |
 |---------|-----------------------|------------|----------|
 | `-DEPD` | E-Paper (GxEPD2_290_C90c) | 128×296 | Black/White/Red |
-| `-DTFT` | TFT LCD (ST7789)      | 320×240    | RGB565 (65K) |
+| `-DTFT` | TFT LCD (ST7789, experimental) | 320×240 | RGB565 (65K) |
 
 The default build flag is `-DEPD`. To switch to TFT, change `build_flags` in `platformio.ini`.
 
@@ -122,11 +123,13 @@ The default build flag is `-DEPD`. To switch to TFT, change `build_flags` in `pl
 | DC          | GPIO 8    |
 | RST         | —         |
 
-The wake-up button connects to **GPIO 3** on ESP32-C3.
+The wake-up button connects **GPIO 3** to 3.3 V on ESP32-C3 (wake-up is active high).
 
 ## Documentation
 
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [BLE Protocol Specification](docs/BLE_PROTOCOL.md)
-- [Image Processing Pipeline](docs/IMAGE_PROCESSING.md)
-- [Contributing Guide](CONTRIBUTING.md)
+
+## Credits
+
+- [GxEPD2](https://github.com/ZinggJM/GxEPD2) by Jean-Marc Zingg drives the panel.

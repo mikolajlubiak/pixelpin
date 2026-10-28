@@ -23,7 +23,7 @@ Each BLE write operation carries either a **text command** or a **binary data ch
 +---------------------------+
 |  BLE Characteristic Write |
 +---------------------------+
-|  Payload (up to MTU size) |
+|  Payload (<= 512 bytes)   |
 |  either:                  |
 |    - ASCII command string |
 |    - raw binary bytes     |
@@ -96,8 +96,8 @@ Effect (TFT):
 ```
 
 The data format depends on the display mode:
-- **EPD**: Pre-encoded 1-bit packed pixel data (1 bit per pixel, 8 pixels per byte, MSB first). See [IMAGE_PROCESSING.md](IMAGE_PROCESSING.md).
-- **TFT**: RGB565 encoded pixel data (2 bytes per pixel, little-endian).
+- **EPD**: 1-bit packed pixel data (1 bit per pixel, 8 pixels per byte, MSB first), produced by the app's [`convertImage()`](https://github.com/mikolajlubiak/pixelpin-app/blob/main/lib/src/img/img.dart).
+- **TFT** (experimental): RGB565 pixel data, 2 bytes per pixel, copied as-is into a `uint16_t` buffer, so the firmware expects native little-endian order.
 
 ### `END`
 
@@ -176,7 +176,7 @@ The total pixel data per image:
 - Color buffer: `128 × 296 / 8 = 4,736 bytes`
 - **Total: 9,472 bytes**
 
-Each BLE write can carry up to the negotiated MTU size (typically 20–517 bytes). The companion app splits the buffer into chunks of at most the negotiated MTU and sends them sequentially.
+The app requests a 512-byte ATT MTU and sends each buffer in 512-byte writes with response (10 writes per plane: 9 full chunks and a final 128-byte chunk). Values longer than MTU − 3 bytes go out as BLE long writes, which the ESP32 BLE stack reassembles before calling `onWrite`.
 
 ---
 
@@ -229,11 +229,11 @@ Each BLE write can carry up to the negotiated MTU size (typically 20–517 bytes
 
 ## Error Handling
 
-The firmware does not implement explicit error acknowledgement in the protocol. The BLE characteristic is write-only; the firmware has no way to send status back to the app.
+The protocol has no acknowledgements, length fields or checksums: the characteristic is write-only, the firmware has no way to send status back to the app, and it expects the client to send exactly one image's worth of data per plane. Delivery itself is reliable because every write is a BLE write with response.
 
-Robustness is provided by:
+What the firmware does guarantee:
 
 - **Buffer pre-clearing**: `MONO BUFFER` and `COLOR BUFFER` commands reset the entire buffer to the default value (`0xFF`) before new data arrives, preventing stale pixels from a previous image.
 - **Inactivity timer**: If BLE writes stop for 5 minutes (on ESP32-C3), the device enters deep sleep and resets all state on wake-up.
-- **Continuous advertising**: The device re-advertises immediately on both connect and disconnect, so the app can reconnect without user intervention.
-- **Offset tracking**: `mono_buffer_size` and `color_buffer_size` track the write position, ensuring chunks are appended correctly even if the MTU causes the image to be fragmented across many writes.
+- **Continuous advertising**: The device restarts advertising on both connect and disconnect, so the app can reconnect without restarting the badge.
+- **Offset tracking**: `mono_buffer_size` and `color_buffer_size` track the write position, so an image split across many writes is reassembled in order.

@@ -2,7 +2,7 @@
 
 ## System Overview
 
-PixelPin is a wearable e-paper display pin that streams images from a smartphone over Bluetooth Low Energy. The system has two components: the companion Flutter app (image selection, encoding, BLE transmission) and the ESP32 firmware (BLE reception, image processing, display rendering).
+PixelPin is a wearable e-paper display pin that streams images from a smartphone over Bluetooth Low Energy. The system has two components: the companion Flutter app (image selection, conversion to 1-bit planes, BLE transmission) and the ESP32 firmware (BLE reception, buffering, display output).
 
 ```
 +------------------+        BLE         +-------------------+
@@ -10,9 +10,9 @@ PixelPin is a wearable e-paper display pin that streams images from a smartphone
 |  (pixelpin-app)  |  Custom protocol  |  (this firmware)  |
 |                  |                   |                   |
 |  Image select    |  Commands:        |  BLE Server       |
-|  RGB565 encode   |  BEGIN            |  Command parser   |
+|  1-bit planes    |  BEGIN            |  Command parser   |
 |  Chunk & send    |  MONO BUFFER      |  Buffer manager   |
-|                  |  COLOR BUFFER     |  Image processor  |
+|                  |  COLOR BUFFER     |  Display layer    |
 |                  |  <binary data>    |  E-Paper driver   |
 |                  |  END              |                   |
 |                  |  DRAW             +--------+----------+
@@ -53,18 +53,16 @@ See [BLE_PROTOCOL.md](BLE_PROTOCOL.md) for the full protocol specification.
 
 ### `src/epaper.cpp` + `include/epaper.h` — E-Paper Display Driver
 
-Wraps the GxEPD2 library. Manages two heap-allocated 1-bit framebuffers and provides the `rgb565_to_buffer()` image conversion function.
+Wraps the GxEPD2 library and manages two heap-allocated 1-bit framebuffers. (`rgb565_to_buffer()` is an unused leftover from when the firmware converted images itself; conversion now happens in the app.)
 
 - **Mono buffer**: 1 bit per pixel — `0` = black, `1` = white
 - **Color buffer**: 1 bit per pixel — `0` = colored (red), `1` = no color
 - Buffer size: `128 × 296 / 8 = 4,736 bytes` each
-- Display initialised at 115200 baud via SPI
-
-See [IMAGE_PROCESSING.md](IMAGE_PROCESSING.md) for the full image processing pipeline.
+- GxEPD2 drives the panel over SPI; the `115200` passed to `display.init()` is GxEPD2's serial diagnostics baud rate
 
 ### `src/tft.cpp` + `include/tft.h` — TFT LCD Driver
 
-Alternative display backend using the Adafruit ST7789 library (enabled with `-DTFT` build flag).
+Experimental alternative display backend using the Adafruit ST7789 library (enabled with `-DTFT` build flag).
 
 - Buffer size: `320 × 240 × 2 = 153,600 bytes` (RGB565, 2 bytes per pixel)
 - `tft_write()` blits the full RGB565 framebuffer directly to the display
@@ -123,29 +121,19 @@ App                                   ESP32
 
 ## Image Processing Pipeline
 
-The full image conversion happens in `rgb565_to_buffer()` in `src/epaper.cpp`. The input is an RGB565-encoded image; the output is two 1-bit framebuffers ready for the e-paper display.
-
-See [IMAGE_PROCESSING.md](IMAGE_PROCESSING.md) for the detailed algorithm description.
-
-### Summary
+Image conversion runs in the companion app ([`lib/src/img/img.dart`](https://github.com/mikolajlubiak/pixelpin-app/blob/main/lib/src/img/img.dart)); the firmware receives the finished bit planes. The app rotates, resizes and crops the picture to 128 × 296, optionally dithers it, and then classifies each pixel:
 
 ```
-RGB565 input (2 bytes/pixel)
+RGB pixel (8 bits per channel, in the app)
         |
         v
-  Extract R, G, B channels
+  Luma check (0.299 R + 0.587 G + 0.114 B > 128)  ──► white  ──► mono bit = 1, color bit = 1
         |
         v
-  Luminance check  ──► whitish?  ──► keep white  ──► mono_buffer bit = 1
-        |                                              color_buffer bit = 1
+  Red check  ──► red dominant?  ──► red  ──► mono bit = 1, color bit = 0
         |
         v
-  Hue check  ──► reddish/yellowish?  ──► colored  ──► mono_buffer bit = 0
-        |                                               color_buffer bit = 0
-        |
-        v
-  Otherwise  ──► black  ──► mono_buffer bit = 0
-                              color_buffer bit = 1
+  Otherwise  ──► black  ──► mono bit = 0, color bit = 1
 
   8 pixels packed into 1 byte, MSB first
 ```
@@ -218,7 +206,7 @@ The firmware's BLE protocol handler is an implicit state machine driven by the c
 
 ## Memory Management
 
-The ESP32 has limited RAM (~300 KB on ESP32-C3, ~512 KB on ESP32-S3). The firmware allocates the display framebuffers on the heap and manages them carefully.
+The ESP32 has limited RAM (400 KB of SRAM on the ESP32-C3, 512 KB on the ESP32-S3). The firmware allocates the display framebuffers on the heap and manages them carefully.
 
 ### E-Paper Mode (EPD)
 
@@ -240,4 +228,4 @@ The full RGB565 image is accumulated in the single buffer and blitted to the dis
 
 ### Deep Sleep
 
-On deep sleep entry (`esp_deep_sleep_start()`), `ble_clean()` resets the buffer offset counters and `common_clean()` resets the inactivity timer. The heap-allocated buffers are released on the next wake-up cycle during `epaper_init()`.
+Before deep sleep (`esp_deep_sleep_start()`), `ble_clean()` resets the buffer offset counters and `common_clean()` resets the inactivity timer. Waking from deep sleep restarts the firmware, so `epaper_init()` allocates fresh buffers on every boot.
