@@ -43,6 +43,20 @@ void ble_init() {
   BLEDevice::startAdvertising();
 }
 
+// Append a received chunk at the buffer's write offset, dropping anything that
+// would run past the end of the buffer.
+static void append_chunk(uint8_t *buffer, size_t &size, const uint8_t *data,
+                         size_t length) {
+  if (size >= BUFFER_SIZE) {
+    return;
+  }
+  if (length > BUFFER_SIZE - size) {
+    length = BUFFER_SIZE - size;
+  }
+  memcpy(buffer + size, data, length);
+  size += length;
+}
+
 void PixelPinBLECharacteristicCallbacks::onWrite(
     BLECharacteristic *pCharacteristic) {
 #ifdef ARDUINO_ESP32C3_DEV
@@ -98,19 +112,16 @@ void PixelPinBLECharacteristicCallbacks::onWrite(
   } else {
 #ifdef EPD
     if (buffer_type == MONO_BUFFER) {
-      memcpy(mono_buffer + mono_buffer_size, pCharacteristic->getData(),
-             pCharacteristic->getLength());
-      mono_buffer_size += pCharacteristic->getLength();
+      append_chunk(mono_buffer, mono_buffer_size, pCharacteristic->getData(),
+                   pCharacteristic->getLength());
     }
     if (buffer_type == COLOR_BUFFER) {
-      memcpy(color_buffer + color_buffer_size, pCharacteristic->getData(),
-             pCharacteristic->getLength());
-      color_buffer_size += pCharacteristic->getLength();
+      append_chunk(color_buffer, color_buffer_size, pCharacteristic->getData(),
+                   pCharacteristic->getLength());
     }
 #elif TFT
-    memcpy(tft_buffer + tft_buffer_size, pCharacteristic->getData(),
-           pCharacteristic->getLength());
-    tft_buffer_size += pCharacteristic->getLength();
+    append_chunk(tft_buffer, tft_buffer_size, pCharacteristic->getData(),
+                 pCharacteristic->getLength());
 #endif
   }
 }

@@ -78,21 +78,24 @@ Effect:   memset(tft_buffer, 0x00, BUFFER_SIZE)
 
 ### Binary Data (no command keyword)
 
-Any write payload that does not match a command string is treated as raw pixel data and appended to the currently active buffer.
+Any write payload that does not match a command string is treated as raw pixel data and appended to the currently active buffer. Each chunk is clamped to the space left in that buffer, so data past the end of a plane is dropped.
 
 ```
 Payload:  <raw bytes>
 Effect (EPD, MONO_BUFFER):
-    memcpy(mono_buffer + mono_buffer_size, data, length)
-    mono_buffer_size += length
+    n = min(length, BUFFER_SIZE - mono_buffer_size)
+    memcpy(mono_buffer + mono_buffer_size, data, n)
+    mono_buffer_size += n
 
 Effect (EPD, COLOR_BUFFER):
-    memcpy(color_buffer + color_buffer_size, data, length)
-    color_buffer_size += length
+    n = min(length, BUFFER_SIZE - color_buffer_size)
+    memcpy(color_buffer + color_buffer_size, data, n)
+    color_buffer_size += n
 
 Effect (TFT):
-    memcpy(tft_buffer + tft_buffer_size, data, length)
-    tft_buffer_size += length
+    n = min(length, BUFFER_SIZE - tft_buffer_size)
+    memcpy(tft_buffer + tft_buffer_size, data, n)
+    tft_buffer_size += n
 ```
 
 The data format depends on the display mode:
@@ -229,7 +232,7 @@ The app requests a 512-byte ATT MTU and sends each buffer in 512-byte writes wit
 
 ## Error Handling
 
-The protocol has no acknowledgements, length fields or checksums: the characteristic is write-only, the firmware has no way to send status back to the app, and it expects the client to send exactly one image's worth of data per plane. Delivery itself is reliable because every write is a BLE write with response.
+The protocol has no acknowledgements, length fields or checksums: the characteristic is write-only, the firmware has no way to send status back to the app, and it expects the client to send exactly one image's worth of data per plane (anything beyond the buffer is dropped). Delivery itself is reliable because every write is a BLE write with response.
 
 What the firmware does guarantee:
 
@@ -237,3 +240,4 @@ What the firmware does guarantee:
 - **Inactivity timer**: If BLE writes stop for 5 minutes (on ESP32-C3), the device enters deep sleep and resets all state on wake-up.
 - **Continuous advertising**: The device restarts advertising on both connect and disconnect, so the app can reconnect without restarting the badge.
 - **Offset tracking**: `mono_buffer_size` and `color_buffer_size` track the write position, so an image split across many writes is reassembled in order.
+- **Bounds checking**: every chunk is clamped to the space left in the active buffer, so an oversized or malformed transfer cannot write past the end of a framebuffer.

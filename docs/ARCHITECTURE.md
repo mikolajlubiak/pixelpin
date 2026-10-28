@@ -216,7 +216,7 @@ The ESP32 has limited RAM (400 KB of SRAM on the ESP32-C3, 512 KB on the ESP32-S
 | `color_buffer` | 4,736 bytes (128 × 296 / 8) | `malloc` in `epaper_init()` |
 | **Total** | **9,472 bytes** | freed in `epaper_clean()` |
 
-BLE data is written directly into these pre-allocated buffers using `memcpy`. The `mono_buffer_size` and `color_buffer_size` counters track the current fill offset. Buffers are pre-cleared with `memset(..., 0xFF, BUFFER_SIZE)` before each transfer (0xFF = all white / no color).
+BLE data is written directly into these pre-allocated buffers using `memcpy`, clamped to the space left in the active buffer. The `mono_buffer_size` and `color_buffer_size` counters track the current fill offset. Buffers are pre-cleared with `memset(..., 0xFF, BUFFER_SIZE)` before each transfer (0xFF = all white / no color).
 
 ### TFT Mode
 
